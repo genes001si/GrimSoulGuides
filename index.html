@@ -7,6 +7,20 @@
     <title>Grim Soul Guides</title>
 
     <style>
+        ::selection {
+            background-color: rgba(255, 0, 0, 0.5);
+            color: #ffffff;                       
+        }
+        ::-moz-selection {
+            background-color: rgba(255, 0, 0, 0.5);
+            color: #ffffff;
+        }
+        input::selection,
+        textarea::selection,
+        button::selection {
+            background-color: rgba(255, 0, 0, 0.5);
+            color: #ffffff;
+        }
         body {
             font-size: 15px; 
             color: #ffffff;
@@ -220,9 +234,157 @@
             opacity: 0.5;    
             pointer-events: none;
         }
+        .custom-modal {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: auto;
+            height: auto;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .custom-modal-content {
+            background: #000;       
+            color: #fff;
+            padding: 2px 2px;
+            border-radius: 6px;    
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            min-width: 200px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+       .custom-btn {
+           background: transparent; 
+           color: #fff;                
+           border: none;          
+           padding: 10px 5px;
+           font-size: 14px;
+           cursor: pointer;
+           border-radius: 6px;
+       }
+       .custom-btn:hover {
+           background: rgba(255,255,255,0.1);
+       }
+       .custom-btn:focus {
+           outline: none;             
+           box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+       }
+       .btn-divider {
+           width: 1px;           
+           height: 28px;            
+           background: rgba(255, 255, 255, 0.8);
+           display: inline-block;
+           margin: 0 2px;          
+           border-radius: 1px;
+       }
         
     </style>
 </head>
+<!-- кастомное меню (модальное окно) -->
+<div id="customModal" class="custom-modal" style="display:none;">
+  <div class="custom-modal-content" id="customModalContent">
+    <button id="cbCopy" class="custom-btn" type="button">Копировать</button>
+    <span class="btn-divider" aria-hidden="true"></span>
+    <button id="cbHighlight" class="custom-btn" type="button">Выбрать всё</button>
+  </div>
+</div>
+<script>
+(function() {
+  const modal = document.getElementById('customModal');
+  const content = document.getElementById('customModalContent');
+  const btnCopy = document.getElementById('cbCopy');
+  const btnHighlight = document.getElementById('cbHighlight');
+  let dragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    positionModalNearCursor(e.clientX, e.clientY);
+    modal.style.display = 'block';
+  });
+  function positionModalNearCursor(x, y) {
+    const padding = 8;
+    const w = content.offsetWidth || 260;
+    const h = content.offsetHeight || 40;
+    let left = x + padding;
+    let top  = y - h - padding;
+    if (top < padding) {
+      top = y + padding;
+    }
+    const vpW = window.innerWidth;
+    const vpH = window.innerHeight;
+    if (left + w > vpW - padding) {
+      left = vpW - w - padding;
+    }
+    if (top + h > vpH - padding) {
+      top = vpH - h - padding;
+    }
+    modal.style.left = left + 'px';
+    modal.style.top  = top + 'px';
+  }
+  content.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    dragging = true;
+    const rect = modal.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mouseup', function() {
+    dragging = false;
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    const left = e.clientX - dragOffsetX;
+    const top = e.clientY - dragOffsetY;
+    const vpW = window.innerWidth;
+    const vpH = window.innerHeight;
+    const w = content.offsetWidth;
+    const h = content.offsetHeight;
+    let newLeft = Math.max(0, Math.min(left, vpW - w - 2));
+    let newTop = Math.max(0, Math.min(top, vpH - h - 2));
+    modal.style.left = newLeft + 'px';
+    modal.style.top = newTop + 'px';
+  });
+  btnCopy.addEventListener('click', async function() {
+    const text = window.getSelection().toString();
+    if (text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const tmp = document.createElement('textarea');
+        tmp.value = text;
+        document.body.appendChild(tmp);
+        tmp.focus();
+        tmp.select();
+        document.execCommand('copy');
+        tmp.remove();
+      }
+    }
+    window.getSelection().removeAllRanges();
+    modal.style.display = 'none';
+  });
+  btnHighlight.addEventListener('click', function() {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    const range = document.createRange();
+    range.selectNodeContents(document.body);
+    sel.addRange(range);
+    modal.style.display = 'none';
+  });
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+  window.addEventListener('scroll', function() { modal.style.display = 'none'; });
+  window.addEventListener('resize', function() { modal.style.display = 'none'; });
+})();
+</script>
 <body>
 <div class="fixed-bg"></div>
 
@@ -306,6 +468,24 @@
         <div class="img-caption">Какое-то примерное представление. 7 - это отмечен сундук на 7 часов.</div>
     </div>
     <p class="text-bg">Сундуки располагаются так же как цифры на часах. Тактику пишет магистр, какая пара какой сундук открывает.</p>
+    <p class="text-bg" style="color: rgba(255, 31, 56, 1.0);">Тактика нашего ордена</p>
+    <div class="img-box">
+        <img src="taktika.png" alt="тактика" class="img-box-img">
+        <div class="img-caption">Сундуки, которые открывают пары.</div>
+    </div>
+    <p class="text-bg">Сундуки открывают только две пары: первая пара открывает сундуки, отмеченные жёлтым в том же порядке, вторая пара открывает сундуки, отмеченные красным в том же порядке. Все остальные – идёте сразу на босса чтобы агрить круги на себя, как откроем сундук – берете оружие и хил и сразу идёте обратно к дереву!</p>
+    <p class="text-bg">Когда пары откроют все свои отмеченные сундуки – они идут бить дерево пока не сломается оружие, потом какие-то игроки идут открывать остальные сундуки.</p>
+    <p class="info-box">Важные моменты:</p>
+    <p> </p>
+    <div class="info-box">
+        <p>• Все кто бьёт дерево должны стоять вокруг его, оно будет под себя круги кидать и вы сможете легко отбежать;</p>
+        <p>• Не бегайте по локации, а то дерево будет кидать круги под ноги рандомным игрокам, и открывающим тоже;</p>
+        <p>• Старайтесь всегда кучковатся в одном месте где-то у дерева, даже когда хилитесь – иначе в эти паузы когда вы отходите будет прилетать по тем кто открывает сундуки;</p>
+        <p>• Если ваша пара, с которой вас поставил магистр, не пришла, идите сразу на босса(если магистр ничего не поменяет перед самым боем);</p>
+        <p>• Если у открывающей пары умер напарник, кто-то один подбегаете и помогаете открывать дальше;</p>
+        <p>• Не берите по несколько оружий за раз. Не будте эгоистами, если вы взяли несколько оружий и умрёте, напарникам будет сложнее взять это оружие. Хил тоже не берите наперёд – если у вас почти целое хп, а у кого-то нет, логично что последним он будет нужнее.</p>
+        <p>• Если кто-то умер, чекайте трупы, там могут остаться хил и оружие.</p>
+    </div>
     <hr class="divider"></hr>
     <h3 class="h3-bg">Бой</h3>
     <p class="text-bg">В бою сундуки можно открывать только вдвоём, так как дерево бьёт корнями и прогресс сбрасывается.</p>
@@ -316,7 +496,7 @@
     <p> </p>
     <p class="text-bg">Синим кругом дерево чаще бьёт по скоплению 2-х и более игроков, поэтому не подбегаем к тем кто открывает сундук!</p>
     <p> </p>
-    <p class="text-bg">Несколько пар должны открывать еще сундуки, остальные – после открытия сундука брать хил, оружие и бить дерево.</p>
+    <p class="text-bg">Не берите по несколько оружий за раз; Если кто-то умер, чекайте трупы, там могут остатся хил и оружие.</p>
     <p> </p>
         <hr class="divider"></hr>
         <div class="owner-card">
@@ -324,7 +504,7 @@
                 <p class="owner-label">Кодер сайта</p>
                 <p class="owner-name">𐌑𑣗𐒴ℹ𐌳𐒴𖽉ℹ</p>
                 <p class="owner-desc">——————————————</p>
-                <p class="owner-desc">Сайт создан 23 февраля 2026 юзером @teyck. Гайд написан 13 февраля. Мой игровой ник - l¡k.ver, орден Алькантара.</p>
+                <p class="owner-desc">Сайт создан 23 февраля 2026 юзером @teyck. Гайд написан 13 февраля. Мой игровой ник - l¡k.ver, орден Алькантара. Обновлено: 8 марта.</p>
            </div>
            <img src="avatar.png" alt="Владелец" class="owner-photo">
            <div class="bg-stars" aria-label="фоновые звезды">
@@ -336,4 +516,4 @@
         </div>
 
 </body>
-</html>
+    </html>
